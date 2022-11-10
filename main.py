@@ -295,6 +295,10 @@ if __name__ == '__main__':
                                     dateValStart.clear()
                                     dateValStop.clear()
                                     i -= 1
+                            elif (m.year != int(academicYearSplitted[0]) and m.year != int(academicYearSplitted[1])) or (n.year != int(academicYearSplitted[0]) and n.year != int(academicYearSplitted[1])):
+                                dateValStart.clear()
+                                dateValStop.clear()
+                                i -= 1
                         position2 = 0
                     position1 = 0
                 else:
