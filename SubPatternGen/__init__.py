@@ -1,17 +1,16 @@
 import random
 import string
 from datetime import date
-from ElementGen import generateProfId
-from ElementGen import generateVersion
-from ElementGen import generateCourseId
-from ElementGen import generateDate
+from ElementGen import *
 from DateDurationCalc import calculateSecondDate
 
 def generateSubPatternProfOrg (*elements):
+    localProfessorId = elements[0].copy()
     j = 0
     subPattern = ''
     for i in elements[4]:
-        regular = generateProfId(1, 0, 1)
+        regular = random.choice(localProfessorId)
+        localProfessorId.remove(regular)
         verId = generateVersion(j, 0)
         j += 1
         if i == 0:
@@ -51,6 +50,8 @@ def generateSubPatternProfOrg (*elements):
                     subPattern = subPattern + '{' + idRegularChoice + ',' + lessonHChoice + ',' + exerciseHChoice + ',' + labHChoice + '}'
                 k += 1
             else:
+                professor = random.choice(localProfessorId)
+                localProfessorId.remove(professor)
                 if lessonHVer > 5:
                     lessonHV = random.randint(0, lessonHVer)
                 else:
@@ -65,9 +66,9 @@ def generateSubPatternProfOrg (*elements):
                     laboraHV = laboraHVer
                 if lessonHV != 0 or exerciHV != 0 or laboraHV != 0:
                     if elements[5] == 0:
-                        subPattern = subPattern + ',{' + generateProfId(1, 0, 1) + ',' + str(lessonHV) + ',' + str(exerciHV) + ',' + str(laboraHV) + '}'
+                        subPattern = subPattern + ',{' + professor + ',' + str(lessonHV) + ',' + str(exerciHV) + ',' + str(laboraHV) + '}'
                     else:
-                        idRegularChoice = random.choice(['', generateProfId(1, 0, 1)])
+                        idRegularChoice = random.choice(['', professor])
                         lessonHChoice = random.choice(['', str(lessonHV)])
                         exerciseHChoice = random.choice(['', str(exerciHV)])
                         labHChoice = random.choice(['', str(laboraHV)])
@@ -96,19 +97,25 @@ def generateSubPatternExamOrg(insertError):
     subPattern = '{' + str(examH) + ',' + str(entrance) + ',' + str(exit) + ',' + exTy + ',' + clTy + ',' + str(partecipants) + '}'
     return subPattern
 
-def generateSubPatternGroupedCourses():
+def generateSubPatternGroupedCourses(coursesGen, courseGiven):
+    val1 = int(coursesGen)
+    val2 = int(courseGiven)
     courses = ''
     groupedCour = range(random.randint(1, 6))
+    coursesId = generateCourseIdList(val1)
+    coursesId.remove(coursesId[val2])
     for l in groupedCour:
+        courseChosen = random.choice(coursesId)
+        coursesId.remove(courseChosen)
         if l == 0:
             if l == groupedCour[-1]:
                 courses = '{}'
             else:
-                courses = '{' + generateCourseId()
+                courses = '{' + courseChosen
         elif l == groupedCour[-1]:
-            courses = courses + ',' + generateCourseId() + '}'
+            courses = courses + ',' + courseChosen + '}'
         else:
-            courses = courses + ',' + generateCourseId()
+            courses = courses + ',' + courseChosen
     return courses
 
 def generateEndedCourses ():

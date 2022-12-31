@@ -12,7 +12,7 @@ def generateRoom (insertError):
     return id
 
 def generateDate (isAA, *AAref):
-    if AAref[0] == 'nul':
+    if AAref[0] == '':
         if isAA == 0:
             year = random.randint(2000, 2022)
             date = str(year) + '-' + str(year + 1)
@@ -68,9 +68,26 @@ def generateVersion (prev, insertError):
         verId = random.choice(string.ascii_uppercase) + str(random.randint(1, 999)).rjust(3, '0')
     return verId
 
-def generateCourseId():
-    letId = ''
-    for i in range(5):
-        letId = letId + random.choice(string.ascii_uppercase)
-    numId = '01' + letId
-    return numId
+def generateCourseId(coursesGen, courseGiven):
+    letIdVector = []
+    for i in range(coursesGen):
+        if i != courseGiven:
+            valToTranslate = i
+            letId = '01'
+            for j in range(4, -1, -1):
+                idxAsciiTable = valToTranslate // (26**j)
+                valToTranslate = valToTranslate - (idxAsciiTable*(26**j))
+                letId = letId + string.ascii_uppercase[idxAsciiTable]
+            letIdVector.append(letId)
+    return random.choice(letIdVector)
+def generateCourseIdList(coursesGen):
+    letIdVector = []
+    for i in range(coursesGen):
+        valToTranslate = i
+        letId = '01'
+        for j in range(4, -1, -1):
+            idxAsciiTable = valToTranslate // (26**j)
+            valToTranslate = valToTranslate - (idxAsciiTable*(26**j))
+            letId = letId + string.ascii_uppercase[idxAsciiTable]
+        letIdVector.append(letId)
+    return letIdVector

@@ -2,20 +2,14 @@ import random
 from datetime import date
 from datetime import timedelta
 from PatternGen import generatePattern
-from SubPatternGen import generateSubPatternProfOrg
-from SubPatternGen import generateSubPatternExamOrg
-from SubPatternGen import generateSubPatternGroupedCourses
-from SubPatternGen import generateSubPatternUnavailability
-from ElementGen import generateRoom
-from ElementGen import generateDate
-from ElementGen import generateProfId
-from ElementGen import generateCourseId
+from SubPatternGen import *
+from ElementGen import *
 from DateDurationCalc import calculateSecondDate
 
 if __name__ == '__main__':
     patternToOut = ''
     generate = input("inserire il numero di righe da generare: ")
-    fileNum = input("\ninserire una versione del file da generare: ")
+    fileNum = input("\ninserire la versione del file da generare: ")
     fileTypeGeneration = input("\ninserire il tipo di file da generare\n\t- p -> add persone\n\t- a -> add aule"
                                "\n\t- c -> add corsi\n\t- cs -> add corsi di studio\n\t- up -> update persone"
                                "\n\t- ua -> update aule\n\t- ic -> insert course\n\t- sa -> set availability"
@@ -23,9 +17,9 @@ if __name__ == '__main__':
 
     match fileTypeGeneration:
         case 'p':
-            fileOfName = open(r"../../Desktop/Nomi_PAEC.txt", 'r')
-            fileOfSurname = open(r"../../Desktop/Cognomi_PAEC.txt", 'r')
-            fileOfMail = open(r"../../Desktop/Mail_PAEC.txt", 'r')
+            fileOfName = open(r"./FileToGenerateFrom/Nomi_PAEC.txt", 'r')
+            fileOfSurname = open(r"./FileToGenerateFrom/Cognomi_PAEC.txt", 'r')
+            fileOfMail = open(r"./FileToGenerateFrom/Mail_PAEC.txt", 'r')
             names = fileOfName.read()
             surnames = fileOfSurname.read()
             mails = fileOfMail.read()
@@ -36,7 +30,6 @@ if __name__ == '__main__':
             listOfSurnames = surnames.split()
             listOfMails = mails.split()
             fileOutputP = open("automateGenPERSON_" + fileNum.rjust(2, '0') + ".txt", 'w')
-
             for i in range(int(generate, 10)):
                 # person pattern generation
                 name = random.choice(listOfNames)
@@ -71,23 +64,32 @@ if __name__ == '__main__':
             fileOutputCl.close()
 
         case 'c':
-            fileOfCourse = open(r"../../Desktop/Corsi_PAEC.txt", 'r')
+            id = []
+            fileOfCourse = open(r"./FileToGenerateFrom/Corsi_PAEC.txt", 'r')
             courses = fileOfCourse.read()
             fileOfCourse.close()
+            try:
+                with open(r"../../CLionProjects/Progetto/cmake-build-debug/db_professori.txt") as fileOfProfIds:
+                    for line in fileOfProfIds:
+                        id.append(line.split(';')[0])
+            except IOError:
+                print("\nfile di database per i professori non trovato\ngenerazione \"automatica\" degli id dei professori nei corsi")
+                for j in range(int(generate, 10)):
+                    id.append(generateProfId(1, 0, 1))
             listOfCourses = courses.split('\n')
             fileOutputCo = open("automateGenCOURSE_" + fileNum.rjust(2, '0') + ".txt", 'w')
 
-            for i in range(int(generate, 10)):
+            cycleNum = int(generate, 10)
+            for i in range(cycleNum):
                 lessonH = random.randint(1, 100)
                 exerciH = random.randint(1, 100)
                 laboraH = random.randint(1, 100)
-                numOfVer = random.randint(1, 4)
+                numOfVer = random.randint(1, 3)
                 numOfVerList = range(numOfVer)
-                patternToOut = generatePattern(generateDate(0), random.choice(listOfCourses),
-                                               str(random.randint(6, 10)), str(lessonH), str(exerciH), str(laboraH), 'attivo',
-                                               numOfVer,
-                                               generateSubPatternProfOrg(generateProfId(1, 0, 1), lessonH, exerciH, laboraH, numOfVerList, 0),
-                                               generateSubPatternExamOrg(1), generateSubPatternGroupedCourses())
+                patternToOut = generatePattern(generateDate(0,''), random.choice(listOfCourses),str(random.randint(6, 10)),
+                                               str(lessonH), str(exerciH), str(laboraH), 'attivo', numOfVer,
+                                               generateSubPatternProfOrg(id, lessonH, exerciH, laboraH, numOfVerList, 0),
+                                               generateSubPatternExamOrg(1), generateSubPatternGroupedCourses(cycleNum, i))
                 fileOutputCo.write(patternToOut)
                 if i != int(generate, 10):
                     fileOutputCo.write('\n')
@@ -97,23 +99,39 @@ if __name__ == '__main__':
             # course of study pattern generation
             courses = ''
             session = ''
+            id = []
 
             fileOutputCoS = open("automateGenCOURSEofSTUDY_" + fileNum.rjust(2, '0') + ".txt", 'w')
+            try:
+                with open(r"../../CLionProjects/Progetto/cmake-build-debug/db_corsi.txt") as fileOfCourseIds:
+                    for line in fileOfCourseIds:
+                        if line.split(';')[0] == 'c':
+                            id.append(line.split(';')[1])
+            except IOError:
+                print("\nfile di database per i professori non trovato\ngenerazione \"automatica\" degli id dei professori nei corsi")
+                id.append(generateCourseIdList(int(generate, 10)))
+
             for i in range(int(generate, 10)):
+                copyCourseIds = []
+                copyCourseIds.clear()
+                copyCourseIds.append(id[0 : len(id) // 2].copy())
+                copyCourseIds.append(id[(len(id) // 2) + 1 : -1].copy())
                 bs_ms = random.choice([6, 4])
                 bs_ms_List = range(bs_ms)
                 for n in bs_ms_List:
                     courseNum = range(random.randint(1, 4))
                     for m in courseNum:
+                        choseCourseIds = random.choice(copyCourseIds[n % 2])
+                        copyCourseIds[n % 2].remove(choseCourseIds)
                         if m == 0:
                             if len(courseNum) == 1:
-                                courses = '{' + generateCourseId() + '}'
+                                courses = '{' + choseCourseIds + '}'
                             else:
-                                courses = '{' + generateCourseId()
+                                courses = '{' + choseCourseIds
                         elif m == courseNum[-1]:
-                            courses = courses + ',' + generateCourseId() + '}'
+                            courses = courses + ',' + choseCourseIds + '}'
                         else:
-                            courses = courses + ',' + generateCourseId()
+                            courses = courses + ',' + choseCourseIds
                     if n == 0:
                         session = '[' + courses
                     elif n == bs_ms_List[-1]:
@@ -134,15 +152,15 @@ if __name__ == '__main__':
             # person update generation
             studentId = []
             professorId = []
-            fileOfName = open(r"../../Desktop/Nomi_PAEC.txt", 'r')
+            fileOfName = open(r"./FileToGenerateFrom/Nomi_PAEC.txt", 'r')
             names = fileOfName.read()
             fileOfName.close()
             listOfNames = names.split()
-            fileOfSurname = open(r"../../Desktop/Cognomi_PAEC.txt", 'r')
+            fileOfSurname = open(r"./FileToGenerateFrom/Cognomi_PAEC.txt", 'r')
             surnames = fileOfSurname.read()
             fileOfSurname.close()
             listOfSurnames = surnames.split()
-            fileOfMail = open(r"../../Desktop/Mail_PAEC.txt", 'r')
+            fileOfMail = open(r"./FileToGenerateFrom/Mail_PAEC.txt", 'r')
             mails = fileOfMail.read()
             fileOfMail.close()
             listOfMails = mails.split()
@@ -240,6 +258,7 @@ if __name__ == '__main__':
             fileOutputUCo.close()
 
         case 'sa':
+            # indisponibilità professori
             professorUnavail = ''
             professorAlreadyChoose = ['']
             professorId = []
