@@ -48,7 +48,6 @@ def generateSubPatternProfOrg (*elements):
                     exerciseHChoice = random.choice(['', str(exerciHV)])
                     labHChoice = random.choice(['', str(laboraHV)])
                     subPattern = subPattern + '{' + idRegularChoice + ',' + lessonHChoice + ',' + exerciseHChoice + ',' + labHChoice + '}'
-                k += 1
             else:
                 professor = random.choice(localProfessorId)
                 localProfessorId.remove(professor)
@@ -68,11 +67,15 @@ def generateSubPatternProfOrg (*elements):
                     if elements[5] == 0:
                         subPattern = subPattern + ',{' + professor + ',' + str(lessonHV) + ',' + str(exerciHV) + ',' + str(laboraHV) + '}'
                     else:
-                        idRegularChoice = random.choice(['', professor])
+                        if k < int(elements[6][i]):
+                            idRegularChoice = random.choice(['', professor])
+                        else:
+                            idRegularChoice = professor
                         lessonHChoice = random.choice(['', str(lessonHV)])
                         exerciseHChoice = random.choice(['', str(exerciHV)])
                         labHChoice = random.choice(['', str(laboraHV)])
                         subPattern = subPattern + ',{' + idRegularChoice + ',' + lessonHChoice + ',' + exerciseHChoice + ',' + labHChoice + '}'
+            k += 1
             lessonHVer = lessonHVer - lessonHV
             exerciHVer = exerciHVer - exerciHV
             laboraHVer = laboraHVer - laboraHV
@@ -83,17 +86,13 @@ def generateSubPatternProfOrg (*elements):
             subPattern = subPattern + ','
     return subPattern
 
-def generateSubPatternExamOrg(insertError):
+def generateSubPatternExamOrg():
     examH = random.randrange(60, 240, 10)
     entrance = random.randrange(5, 15, 5)
     exit = random.randrange(5, 15, 5)
     partecipants = random.randint(1, 400)
-    if insertError == 0:
-        clTy = random.choice(string.ascii_letters)
-        exTy = random.choice(string.ascii_letters)
-    else:
-        clTy = random.choice(['A', 'L'])
-        exTy = random.choice(['S', 'O', 'SO', 'P'])
+    clTy = random.choice(['A', 'L'])
+    exTy = random.choice(['S', 'O', 'SO', 'P'])
     subPattern = '{' + str(examH) + ',' + str(entrance) + ',' + str(exit) + ',' + exTy + ',' + clTy + ',' + str(partecipants) + '}'
     return subPattern
 

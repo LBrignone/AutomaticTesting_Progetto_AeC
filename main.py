@@ -1,4 +1,5 @@
 import random
+from pathlib import Path
 from datetime import date
 from datetime import timedelta
 from PatternGen import generatePattern
@@ -8,12 +9,13 @@ from DateDurationCalc import calculateSecondDate
 
 if __name__ == '__main__':
     patternToOut = ''
-    generate = input("inserire il numero di righe da generare: ")
     fileNum = input("\ninserire la versione del file da generare: ")
     fileTypeGeneration = input("\ninserire il tipo di file da generare\n\t- p -> add persone\n\t- a -> add aule"
                                "\n\t- c -> add corsi\n\t- cs -> add corsi di studio\n\t- up -> update persone"
                                "\n\t- ua -> update aule\n\t- ic -> insert course\n\t- sa -> set availability"
-                               "\n\t- s -> exam session\n--> ")
+                               "\n\t- s -> exam session\n\t- r -> grouped courses\n--> ")
+    if fileTypeGeneration != 'r':
+        generate = input("inserire il numero di righe da generare: ")
 
     match fileTypeGeneration:
         case 'p':
@@ -73,9 +75,10 @@ if __name__ == '__main__':
                     for line in fileOfProfIds:
                         id.append(line.split(';')[0])
             except IOError:
-                print("\nfile di database per i professori non trovato\ngenerazione \"automatica\" degli id dei professori nei corsi")
-                for j in range(int(generate, 10)):
-                    id.append(generateProfId(1, 0, 1))
+                print("\nfile di database per i professori non trovato generazione \"automatica\" degli id dei professori nei corsi")
+                numProf = input("\ninserire il numero di professori da generare: ")
+                for j in range(int(numProf, 10)):
+                    id.append(generateProfId(0, j))
             listOfCourses = courses.split('\n')
             fileOutputCo = open("automateGenCOURSE_" + fileNum.rjust(2, '0') + ".txt", 'w')
 
@@ -86,10 +89,12 @@ if __name__ == '__main__':
                 laboraH = random.randint(1, 100)
                 numOfVer = random.randint(1, 3)
                 numOfVerList = range(numOfVer)
-                patternToOut = generatePattern(generateDate(0,''), random.choice(listOfCourses),str(random.randint(6, 10)),
+                courseNameChoose = random.choice(listOfCourses)
+                listOfCourses.remove(courseNameChoose)
+                patternToOut = generatePattern(generateDate(0,''), courseNameChoose,str(random.randint(6, 10)),
                                                str(lessonH), str(exerciH), str(laboraH), 'attivo', numOfVer,
                                                generateSubPatternProfOrg(id, lessonH, exerciH, laboraH, numOfVerList, 0),
-                                               generateSubPatternExamOrg(1), generateSubPatternGroupedCourses(cycleNum, i))
+                                               generateSubPatternExamOrg(), generateSubPatternGroupedCourses(cycleNum, i))
                 fileOutputCo.write(patternToOut)
                 if i != int(generate, 10):
                     fileOutputCo.write('\n')
@@ -179,7 +184,7 @@ if __name__ == '__main__':
                 professorElements = i.split(';')
                 professorId.append(professorElements[0])
             fileOutputUPS = open("automateGenUPDATESTUDENTS_" + fileNum.rjust(2, '0') + ".txt", 'w')
-            fileOutputUPD = open("automateGenUPDATEPROFESSOR" + fileNum.rjust(2, '0') + ".txt", 'w')
+            fileOutputUPD = open("automateGenUPDATEPROFESSOR_" + fileNum.rjust(2, '0') + ".txt", 'w')
 
             for i in range(int(generate, 10)):
                 name = random.choice(listOfNames)
@@ -203,20 +208,21 @@ if __name__ == '__main__':
         case 'ua':
             # classroom update generation
             classroomId = []
-            fileOfClassroom = open(r"../../CLionProjects/Progetto/cmake-build-debug/db_aule.txt", 'r')
-            completeClassroomFile = fileOfClassroom.read()
-            fileOfClassroom.close()
-            completeClassroom = completeClassroomFile.split('\n')
-            for i in completeClassroom:
-                classroomElement = i.split(';')
-                classroomId.append(classroomElement[0])
+            capacity = []
+            examCapacity = []
+            with  open(r"../../CLionProjects/Progetto/cmake-build-debug/db_aule.txt", 'r') as fileOfClassroom:
+                for line in fileOfClassroom:
+                    classroomElement = line.split(';')
+                    classroomId.append(classroomElement[0])
+                    capacity.append(classroomElement[3])
+                    examCapacity.append(classroomElement[4])
             fileOutputUCl = open("automateGenUPDATECLASSROOM_" + fileNum.rjust(2, '0') + ".txt", 'w')
 
             for i in range(int(generate, 10)):
                 ClGen = generateRoom(1)
-                maxCap = random.randint(20, 400)
                 classroomTyChoice = random.choice(['A', 'L', ''])
                 classroomToModify = random.choice(classroomId)
+                maxCap = random.randint(20, 400)
                 nameChoice = random.choice(['', ClGen])
                 capChoice = random.choice(['', maxCap])
                 examCapChoice = random.choice(['', random.randint(20, maxCap)])
@@ -229,28 +235,64 @@ if __name__ == '__main__':
         case 'ic':
             # course insert generator
             courseId = []
-            fileOfCourses = open(r"../../CLionProjects/Progetto/cmake-build-debug/db_corsi.txt")
-            completeCourseFile = fileOfCourses.read()
-            fileOfCourses.close()
-            completeCourse = completeCourseFile.split()
-            for i in completeCourseFile:
-                if i.startswith('c'):
-                    courseElement = i.split(';')
-                    courseId.append(courseElement[0])
-            fileOutputUCo = open("automateGenUPDATECOURSE_" + fileNum.rjust(2, '0') + ".txt", 'w')
+            professorId = []
+            lessonH = []
+            exerciH = []
+            laboraH = []
+            professorForVersion = []    # here are registered the number of professors for a given version of a course -> [a, b, c]
+            professorForCourse = []     # here are registered the number of professors for a given course -> [[a, b, c], [d, e, f], ...]
+            counter = 0
+            try:
+                with open(r"../../CLionProjects/Progetto/cmake-build-debug/db_corsi.txt") as fileOfCourses:
+                    for line in fileOfCourses:
+                        if line.startswith('c'):
+                            courseElement = line.split(';')
+                            courseId.append(courseElement[1])
+                            lessonH.append(courseElement[-3])
+                            exerciH.append(courseElement[-2])
+                            laboraH.append(courseElement[-1])
+                        if line.startswith('a'):
+                            courseElement = line.split('{')
+                            courseElement.pop(0)
+                            for j in courseElement:
+                                version = j.split(',')
+                                if version[0].startswith('d'):
+                                    counter += 1
+                                else:
+                                    professorForVersion.append(counter)
+                                    counter = 0
+                            professorForVersion.pop(0)
+                            professorForCourse.append(professorForVersion)
+            except IOError:
+                print("\nfile di database per i corsi non trovato generazione \"automatica\" degli id dei corsi")
+                numProf = input("\ninserire il numero di professori da generare: ")
+                for j in range(int(numProf, 10)):
+                    professorId.append(generateProfId(0, j))
+            try:
+                with open(r"../../CLionProjects/Progetto/cmake-build-debug/db_professori.txt") as fileOfProfIds:
+                    for line in fileOfProfIds:
+                        professorId.append(line.split(';')[0])
+            except IOError:
+                print("\nfile di database per i professori non trovato generazione \"automatica\" degli id dei professori nei corsi")
+                numProf = input("\ninserire il numero di professori da generare: ")
+                for j in range(int(numProf, 10)):
+                    professorId.append(generateProfId(0, j))
+            fileOutputUCo = open("automateGenINSERTCOURSE_" + fileNum.rjust(2, '0') + ".txt", 'w')
 
-            for i in range(int(generate, 10)):
-                dateChoice = generateDate(0)
+            cycleNum = int(generate, 10)
+            for i in range(cycleNum):
+                dateChoice = generateDate(0, 2025, 2025)
                 courseStatusUpdate = random.choice(['attivo', 'non_attivo', ''])
                 versionUpdateNum = random.randint(1, 4)
                 versionUpdateNumList = range(versionUpdateNum)
-                lessonHUP = random.randint(1, 100)
-                exerciHUP = random.randint(1, 100)
-                laboraHUP = random.randint(1, 100)
                 courseToModify = random.choice(courseId)
-                inheritPRoOrg = random.choice(['', generateSubPatternProfOrg(generateProfId(1, 0, 1), lessonHUP, exerciHUP, laboraHUP, versionUpdateNumList, 1)])
-                examOrgChoice = random.choice(['', generateSubPatternExamOrg(1)])
-                groupedChoice = random.choice(['', generateSubPatternGroupedCourses()])
+                numProfPerVer = professorForCourse[courseId.index(courseToModify)]
+                lessonHUP = int(lessonH[courseId.index(courseToModify)])
+                exerciHUP = int(exerciH[courseId.index(courseToModify)])
+                laboraHUP = int(laboraH[courseId.index(courseToModify)])
+                inheritPRoOrg = random.choice(['', generateSubPatternProfOrg(professorId, lessonHUP, exerciHUP, laboraHUP, versionUpdateNumList, 0, numProfPerVer)])
+                examOrgChoice = random.choice(['', generateSubPatternExamOrg()])
+                groupedChoice = random.choice(['', generateSubPatternGroupedCourses(cycleNum, i)])
                 patternToOut = generatePattern(courseToModify, dateChoice, courseStatusUpdate, versionUpdateNum, inheritPRoOrg, examOrgChoice, groupedChoice)
                 fileOutputUCo.write(patternToOut)
                 if i != int(generate, 10):
@@ -272,13 +314,17 @@ if __name__ == '__main__':
                 professorId.append(professorElements[0])
             fileOutputUnv = open("automateGenUNAVAILABILITY_" + academicYear + "_" + fileNum.rjust(2, '0') + ".txt", 'w')
             for i in range(int(generate, 10)):
-                while professorUnavail in professorAlreadyChoose:
-                    professorUnavail = random.choice(professorId)
-                professorAlreadyChoose.append(professorUnavail)
-                patternToOut = generatePattern(professorUnavail, generateSubPatternUnavailability(academicYear)) #generatePattern(generateProfId(1, 0, 1))
-                fileOutputUnv.write(patternToOut)
-                if i != int(generate, 10):
-                    fileOutputUnv.write('\n')
+                if len(professorAlreadyChoose) < len(professorId):
+                    while professorUnavail in professorAlreadyChoose:
+                        professorUnavail = random.choice(professorId)
+                    professorAlreadyChoose.append(professorUnavail)
+                    patternToOut = generatePattern(professorUnavail, generateSubPatternUnavailability(academicYear)) #generatePattern(generateProfId(1, 0, 1))
+                    fileOutputUnv.write(patternToOut)
+                    if i != int(generate, 10):
+                        fileOutputUnv.write('\n')
+                else:
+                    print("error: non abbastanza professori")
+                    break
             fileOutputUnv.close()
 
         case 's':
@@ -293,10 +339,10 @@ if __name__ == '__main__':
             fileOutputS = open("automateGenEXAMSESSION_" + fileNum.rjust(2, '0') + ".txt", 'w')
             while i < int(generate, 10):
                 index = 0
-                academicYear = generateDate(0,'nul')
+                academicYear = generateDate(0,)
                 academicYearSplitted = academicYear.split('-')
                 for j in range(3):
-                    singleDate = generateDate(0, academicYearSplitted)
+                    singleDate = generateDate(1, academicYearSplitted)
                     tmp = date.fromisoformat(singleDate)
                     dateValStart.append(tmp)
                     if index == 0 or index == 1:
@@ -333,3 +379,77 @@ if __name__ == '__main__':
                     if i < int(generate, 10):
                         fileOutputS.write("\n")
             fileOutputS.close()
+
+        case 'r':
+            firstSemester = []
+            secondSemester = []
+            tmpSemester = []
+            val = 0
+            courseId = ''
+            fileOutputGrouped = open("automateGenGROUPEDCOURSES_" + fileNum.rjust(2, '0') + ".txt", 'w')
+            with open(r"../../CLionProjects/Progetto/cmake-build-debug/db_corsi_studio.txt", 'r') as fileOfCourseOfStudy:
+                for line in fileOfCourseOfStudy:
+                    firstSeparation = line.split(';')
+                    coursesBySemester = firstSeparation[2].split('{')
+                    coursesBySemester.pop(0)
+                    for courses in coursesBySemester:
+                        course = courses.split(',')
+                        for verification in course:
+                            if verification:
+                                if verification.endswith('}]\n'):
+                                    verification = verification[0:-3]
+                                    if val == 0:
+                                        firstSemester.append(verification)
+                                    else:
+                                        secondSemester.append(verification)
+                                elif verification.endswith('}]'):
+                                    verification = verification[0:-2]
+                                    if val == 0:
+                                        firstSemester.append(verification)
+                                    else:
+                                        secondSemester.append(verification)
+                                elif verification.endswith('}'):
+                                    verification = verification[0:-1]
+                                    if val == 0:
+                                        firstSemester.append(verification)
+                                    else:
+                                        secondSemester.append(verification)
+                                    if val == 0:
+                                        val += 1
+                                    else:
+                                        val -= 1
+                                else:
+                                    if val == 0:
+                                        firstSemester.append(verification)
+                                    else:
+                                        secondSemester.append(verification)
+            with open(r'../../CLionProjects/Progetto/cmake-build-debug/db_corsi.txt', 'r') as fileOfCourses:
+                for course in fileOfCourses:
+                    choice = ''
+                    if course.startswith('c'):
+                        tmpSemester.clear()
+                        tmp = course.split(';')
+                        courseId = tmp[1]
+                        fileOutputGrouped.write(course)
+                        if firstSemester.count(courseId) > 0:
+                            tmpSemester = firstSemester.copy()
+                            tmpSemester.remove(courseId)
+                        elif secondSemester.count(courseId) > 0:
+                            tmpSemester = secondSemester.copy()
+                            tmpSemester.remove(courseId)
+                    else:
+                        tmp = course.split(';')
+                        tmp = generatePattern(tmp[0], tmp[1], tmp[2], tmp[3], tmp[4], tmp[5])
+                        if len(tmpSemester) > 0:
+                            num = range(random.randint(0, 4))
+                            for grouped in num:
+                                choice += random.choice(tmpSemester)
+                                if grouped != num[-1]:
+                                    choice += ','
+                        else:
+                            num = 0
+                        tmp += ';{' + choice + '}\n'
+                        fileOutputGrouped.write(tmp)
+            p = Path(r"../../CLionProjects/Progetto/cmake-build-debug/db_corsi.txt")
+            p.unlink()
+            Path(r"./automateGenGROUPEDCOURSES_" + fileNum.rjust(2, '0') + ".txt").replace(p)
