@@ -6,15 +6,16 @@ from PatternGen import generatePattern
 from SubPatternGen import *
 from ElementGen import *
 from DateDurationCalc import calculateSecondDate
+from CONSTANTS import *
 
 if __name__ == '__main__':
     patternToOut = ''
     fileNum = input("\ninserire la versione del file da generare: ")
     fileTypeGeneration = input("\ninserire il tipo di file da generare\n\t- p -> add persone\n\t- a -> add aule"
                                "\n\t- c -> add corsi\n\t- cs -> add corsi di studio\n\t- up -> update persone"
-                               "\n\t- ua -> update aule\n\t- ic -> insert course\n\t- sa -> set availability"
-                               "\n\t- s -> exam session\n\t- r -> grouped courses\n--> ")
-    if fileTypeGeneration != 'r':
+                               "\n\t- ua -> update aule\n\t- ic -> insert corso\n\t- pa -> indisponibilità professori"
+                               "\n\t- s -> sessione d'esame\n\t- r -> corsi raggruppati\n--> ")
+    if fileTypeGeneration != 'r' and fileTypeGeneration != 'pa':
         generate = input("inserire il numero di righe da generare: ")
 
     match fileTypeGeneration:
@@ -58,7 +59,7 @@ if __name__ == '__main__':
                             status = 0
                     if status == 1:
                         ClList.append(ClGen)
-                        maxCap = random.randint(20, 400)
+                        maxCap = random.randint(MIN_CLASSROOM_CAP, MAX_CLASSROOM_CAP)
                         patternToOut = generatePattern(random.choice(['A', 'L']), ClGen, str(maxCap), str(random.randint(20, maxCap)))
                 fileOutputCl.write(patternToOut)
                 if i != int(generate, 10):
@@ -84,14 +85,14 @@ if __name__ == '__main__':
 
             cycleNum = int(generate, 10)
             for i in range(cycleNum):
-                lessonH = random.randint(1, 100)
-                exerciH = random.randint(1, 100)
-                laboraH = random.randint(1, 100)
-                numOfVer = random.randint(1, 3)
+                lessonH = random.randint(MIN_HOUR, MAX_HOUR)
+                exerciH = random.randint(MIN_HOUR, MAX_HOUR)
+                laboraH = random.randint(MIN_HOUR, MAX_HOUR)
+                numOfVer = random.randint(MIN_VERSION_NUM, MAX_VERSION_NUM)
                 numOfVerList = range(numOfVer)
                 courseNameChoose = random.choice(listOfCourses)
                 listOfCourses.remove(courseNameChoose)
-                patternToOut = generatePattern(generateDate(0,''), courseNameChoose,str(random.randint(6, 10)),
+                patternToOut = generatePattern(generateDate(0,''), courseNameChoose,str(random.randint(MIN_CFU, MAX_CFU)),
                                                str(lessonH), str(exerciH), str(laboraH), 'attivo', numOfVer,
                                                generateSubPatternProfOrg(id, lessonH, exerciH, laboraH, numOfVerList, 0),
                                                generateSubPatternExamOrg(), generateSubPatternGroupedCourses(cycleNum, i))
@@ -121,10 +122,10 @@ if __name__ == '__main__':
                 copyCourseIds.clear()
                 copyCourseIds.append(id[0 : len(id) // 2].copy())
                 copyCourseIds.append(id[(len(id) // 2) + 1 : -1].copy())
-                bs_ms = random.choice([6, 4])
+                bs_ms = random.choice([SEMESTER_NUM_BS, SEMESTER_NUM_MS])
                 bs_ms_List = range(bs_ms)
                 for n in bs_ms_List:
-                    courseNum = range(random.randint(1, 4))
+                    courseNum = range(random.randint(MIN_COURSE_OF_STUDY, MAX_COURSE_OF_STUDY))
                     for m in courseNum:
                         choseCourseIds = random.choice(copyCourseIds[n % 2])
                         copyCourseIds[n % 2].remove(choseCourseIds)
@@ -222,10 +223,10 @@ if __name__ == '__main__':
                 ClGen = generateRoom(1)
                 classroomTyChoice = random.choice(['A', 'L', ''])
                 classroomToModify = random.choice(classroomId)
-                maxCap = random.randint(20, 400)
+                maxCap = random.randint(MIN_CLASSROOM_CAP, MAX_CLASSROOM_CAP)
                 nameChoice = random.choice(['', ClGen])
                 capChoice = random.choice(['', maxCap])
-                examCapChoice = random.choice(['', random.randint(20, maxCap)])
+                examCapChoice = random.choice(['', random.randint(MIN_CLASSROOM_CAP, maxCap)])
                 patternToOut = generatePattern(classroomToModify, classroomTyChoice, ClGen, str(capChoice), str(examCapChoice))
                 fileOutputUCl.write(patternToOut)
                 if i != int(generate, 10):
@@ -281,7 +282,7 @@ if __name__ == '__main__':
 
             cycleNum = int(generate, 10)
             for i in range(cycleNum):
-                dateChoice = generateDate(0, 2025, 2025)
+                dateChoice = generateDate(0, MIN_ACADEMIC_YEAR, MAX_ACADEMIC_YEAR)
                 courseStatusUpdate = random.choice(['attivo', 'non_attivo', ''])
                 versionUpdateNum = random.randint(1, 4)
                 versionUpdateNumList = range(versionUpdateNum)
@@ -299,28 +300,30 @@ if __name__ == '__main__':
                     fileOutputUCo.write('\n')
             fileOutputUCo.close()
 
-        case 'sa':
+        case 'pa':
             # indisponibilità professori
             professorUnavail = ''
             professorAlreadyChoose = ['']
             professorId = []
             academicYear = input("inserire l'anno accademico di riferimento (formato AAAA-AAAA): ")
-            fileOfProfessors = open(r"../../CLionProjects/Progetto/cmake-build-debug/db_professori.txt", 'r')
-            completeProfessorFile = fileOfProfessors.read()
-            fileOfProfessors.close()
-            completeProfessor = completeProfessorFile.split('\n')
-            for i in completeProfessor:
-                professorElements = i.split(';')
-                professorId.append(professorElements[0])
+            try:
+                with open(r"../../CLionProjects/Progetto/cmake-build-debug/db_professori.txt") as fileOfProfIds:
+                    for line in fileOfProfIds:
+                        professorId.append(line.split(';')[0])
+            except IOError:
+                print("\nfile di database per i professori non trovato generazione \"automatica\" degli id dei professori nei corsi")
+                numProf = input("\ninserire il numero di professori da generare: ")
+                for j in range(int(numProf, 10)):
+                    professorId.append(generateProfId(0, j))
             fileOutputUnv = open("automateGenUNAVAILABILITY_" + academicYear + "_" + fileNum.rjust(2, '0') + ".txt", 'w')
-            for i in range(int(generate, 10)):
+            for i in range(len(professorId)):
                 if len(professorAlreadyChoose) < len(professorId):
                     while professorUnavail in professorAlreadyChoose:
                         professorUnavail = random.choice(professorId)
                     professorAlreadyChoose.append(professorUnavail)
                     patternToOut = generatePattern(professorUnavail, generateSubPatternUnavailability(academicYear)) #generatePattern(generateProfId(1, 0, 1))
                     fileOutputUnv.write(patternToOut)
-                    if i != int(generate, 10):
+                    if i != len(professorId):
                         fileOutputUnv.write('\n')
                 else:
                     print("error: non abbastanza professori")
@@ -346,9 +349,9 @@ if __name__ == '__main__':
                     tmp = date.fromisoformat(singleDate)
                     dateValStart.append(tmp)
                     if index == 0 or index == 1:
-                        dateValStop.append(dateValStart[index] + timedelta(days=42))
+                        dateValStop.append(dateValStart[index] + timedelta(days=SESSION_1_AND_2_DURATION))
                     else:
-                        dateValStop.append(dateValStart[index] + timedelta(days=28))
+                        dateValStop.append(dateValStart[index] + timedelta(days=SESSION_3_DURATION))
                     index += 1
                 if (dateValStart[0] < dateValStart[1] < dateValStart[2]) and (dateValStop[0] < dateValStop[1] < dateValStop[2]):
                     for (k, l) in zip(dateValStart, dateValStop):

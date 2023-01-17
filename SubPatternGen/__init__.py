@@ -87,10 +87,10 @@ def generateSubPatternProfOrg (*elements):
     return subPattern
 
 def generateSubPatternExamOrg():
-    examH = random.randrange(60, 240, 10)
-    entrance = random.randrange(5, 15, 5)
-    exit = random.randrange(5, 15, 5)
-    partecipants = random.randint(1, 400)
+    examH = random.randrange(MIN_EXAM_DURATION, MAX_EXAM_DURATION, STEP_EXAM)
+    entrance = random.randrange(MIN_ENTRANCE_TIME, MAX_ENTRANCE_TIME, STEP_ENTRANCE)
+    exit = random.randrange(MIN_EXIT_TIME, MAX_EXIT_TIME, STEP_EXIT)
+    partecipants = random.randint(MIN_PARTECIPANTS, MAX_PARTECIPANTS)
     clTy = random.choice(['A', 'L'])
     exTy = random.choice(['S', 'O', 'SO', 'P'])
     subPattern = '{' + str(examH) + ',' + str(entrance) + ',' + str(exit) + ',' + exTy + ',' + clTy + ',' + str(partecipants) + '}'
@@ -100,7 +100,7 @@ def generateSubPatternGroupedCourses(coursesGen, courseGiven):
     val1 = int(coursesGen)
     val2 = int(courseGiven)
     courses = ''
-    groupedCour = range(random.randint(1, 6))
+    groupedCour = range(random.randint(MIN_GROUPED_COURSES, MAX_GROUPED_COURSES))
     coursesId = generateCourseIdList(val1)
     coursesId.remove(coursesId[val2])
     for l in groupedCour:
@@ -117,9 +117,9 @@ def generateSubPatternGroupedCourses(coursesGen, courseGiven):
             courses = courses + ',' + courseChosen
     return courses
 
-def generateEndedCourses ():
+def generateEndedCourses():
     endedCourses = ''
-    endedCO = range(random.randint(0, 6))
+    endedCO = range(random.randint(MIN_ENDED_COURSES, MAX_ENDED_COURSES))
     for x in endedCO:
         if x == 0:
             if len(endedCO) == 1:
@@ -134,10 +134,10 @@ def generateEndedCourses ():
         endedCourses = '[]'
     return endedCourses
 
-def generateSubPatternUnavailability (AARef):
+def generateSubPatternUnavailability(AARef):
     DateRef = AARef.split('-')
     inAAStart = date(int(DateRef[0]), 1, 1)
-    inAAStop = date(int(DateRef[1]), 1, 1)
+    inAAStop = date(int(DateRef[1]), 12, 31)
     dateStartToVerify = date
     dateStopToVerify = date
     startDate = ''
@@ -145,19 +145,19 @@ def generateSubPatternUnavailability (AARef):
     toReturn = ''
     startDatesControl = []
     stopDatesControl = []
-    unavailDates = random.randrange(1, 10)
+    unavailDates = random.randrange(MIN_PROF_UNAVAIL_NUM, MAX_PROF_UNAVAIL_NUM)
     for i in range(unavailDates):
         found = 1
         while found > 0:
             found = 0
             startDate = generateDate(1, DateRef)
-            unavailDuration = random.randint(7, 14)
+            unavailDuration = random.randint(MIN_UNAVAIL_DURATION, MAX_UNAVAIL_DURATION)
             stopDate = calculateSecondDate(startDate, unavailDuration)
             dateStartToVerify = date(int(startDate.split('-')[0]), int(startDate.split('-')[1]), int(startDate.split('-')[2]))
             dateStopToVerify = date(int(stopDate.split('-')[0]), int(stopDate.split('-')[1]), int(stopDate.split('-')[2]))
             value = int(stopDate.split('-')[0])
             for (start, stop) in zip(startDatesControl, stopDatesControl):
-                if (start <= dateStartToVerify <= stop) or (start <= dateStopToVerify <= stop) or (inAAStart.year <= dateStopToVerify.year >= inAAStop.year):
+                if (start <= dateStartToVerify <= stop) or (start <= dateStopToVerify <= stop) or not(inAAStart.year <= dateStopToVerify.year <= inAAStop.year):
                     found += 1
         startDatesControl.append(dateStartToVerify)
         stopDatesControl.append(dateStopToVerify)

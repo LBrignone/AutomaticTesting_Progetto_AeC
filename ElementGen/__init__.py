@@ -1,5 +1,6 @@
 import random
 import string
+from CONSTANTS import *
 
 def generateRoom (insertError):
     if insertError == 0:
@@ -14,10 +15,10 @@ def generateRoom (insertError):
 def generateDate (isAA, *AAref):
     if not(AAref):
         if isAA == 0:
-            year = random.randint(2000, 2022)
+            year = random.randint(MIN_YEAR, MAX_YEAR)
             date = str(year) + '-' + str(year + 1)
         else:
-            year = random.randint(2000, 2022)
+            year = random.randint(MIN_YEAR, MAX_YEAR)
             month = random.randint(1, 12)
             if month == 4 or month == 6 or month == 9 or month == 11:
                 day = random.randint(1, 30)
